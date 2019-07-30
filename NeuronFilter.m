@@ -1,8 +1,3 @@
-%
-% NeuronFilter - Temporal Labeling GUI for calcium imaging videos of active neurons
-% Last updated 07/16/2019 by Agnim Agarwal
-%
-
 function NeuronFilter(vid, Mask)
 global i previous;
 global result resultString resultSpTimes;
@@ -268,7 +263,7 @@ setListBox();
             'XTickLabel', data1.boxy1:20:data1.boxy2, 'YTickLabel', data1.boxx1:20:data1.boxx2);
 
         gui.rectangle = rectangle(gui.VideoAxes, 'Position', [data1.center(1) - data1.boxy1 - 6, data1.center(2) - data1.boxx1 - 6, 13, 13], 'EdgeColor', 'yellow');
-        hold(gui.VideoAxes, 'off');
+         hold(gui.VideoAxes, 'off');
 
         % Update the Mask
         data1.masky1 = max(data1.center(1)-30, 1);
@@ -289,19 +284,19 @@ setListBox();
             'Units', 'normalized', 'Position', [0.1, 0.15, 0.8, 0.7]);
         hold(gui.MaskAxes, 'on');
         IsPlaying = 0;
-
+        set(gui.VideoPanel, 'Title', 'Video');
     end
-
-%% SaveTrace - saves labeling output file and closes GUI window
+    
+    %% SaveTrace - saves labeling output file and closes GUI window
     function SaveTrace(~, ~)
         %         save('FinalTrace.mat', Trace);
         fclose(fileout);
         close(gui.Window);
     end
-
-%% ResetSpikeArray - Reset spike variables, calculate mean and standard
-%deviation for trace, loop through trace to check for spikes of
-%activity
+    
+    %% ResetSpikeArray - Reset spike variables, calculate mean and standard
+    %deviation for trace, loop through trace to check for spikes of
+    %activity
     function ResetSpikeArray(~, ~)
         spikeArray = [];
         spikeCheck = false;
@@ -354,8 +349,8 @@ setListBox();
             disp(strcat('Total Spikes: ', int2str(spikeTotal)));
         end
     end
-
-%% PlayVideo - play full video for selected neuron
+    
+    %% PlayVideo - play full video for selected neuron
     function PlayVideo(~, ~)
 
         %             if ishandle(timeline); delete(timeline); end
@@ -411,18 +406,20 @@ setListBox();
             end
 
             %To prevent freeze in video
-            hold(gui.VideoAxes, 'off');
+            hold(gui.VideoAxes,'off');
         end
     end
 
-%% PushSpikeButton - start spike labeling, play video for 1st spike
+    %% PushSpikeButton - start spike labeling, play video for 1st spike
     function PushSpikeButton(~, ~)
         %disp(meanAc);disp(std);
         spikeCheck = true;
-
+        
         if (spikeTotal > 0)
             fprintf(fileout, strcat(int2str(spikeArray(1)), " ", int2str(spikeArray(2)), " "));
             foundPeak = false;
+            currentylim = get(gui.TraceAxes, 'Ylim');
+            set(gui.VideoPanel, 'Title', strcat('Video - Spike at frame #', int2str(max(spikeArray(1)-20, 1))));
             for j = max(spikeArray(1)-20, 1):min(spikeArray(2)+20, size(vid, 3))
                 IsPlaying = 1;
                 imgShow = vid(data1.boxx1:data1.boxx2, data1.boxy1:data1.boxy2, j);
@@ -441,6 +438,7 @@ setListBox();
                     'XTick', 1:30:size(data1.videomask, 2), 'YTick', 1:30:size(data1.videomask, 1), ...
                     'XTickLabel', data1.boxy1:30:data1.boxy2, 'YTickLabel', data1.boxx1:30:data1.boxx2);
                 colormap(gui.VideoAxes, gray);
+                timeline = plot(gui.TraceAxes, [j, j], currentylim, '-', 'Color', 'red');
                 pause(0.008);
                 delete(timeline);
 
@@ -455,8 +453,8 @@ setListBox();
 
     end
 
-%% YesSpike - Check if user is looking for spikes, print to output file,
-%and play video for next spike
+    %% YesSpike - Check if user is looking for spikes, print to output file,
+    %and play video for next spike
     function YesSpike(~, ~)
         if spikeCheck
             fprintf(fileout, strcat(int2str(1), "\n"));
@@ -467,6 +465,8 @@ setListBox();
             else
                 %disp(int2str(spikeArray(2*spikeCount-1)));
                 fprintf(fileout, strcat(int2str(spikeArray(2*spikeCount-1)), " ", int2str(spikeArray(2*spikeCount)), " "));
+                currentylim = get(gui.TraceAxes, 'Ylim');
+                set(gui.VideoPanel, 'Title', strcat('Video - Spike at frame #', int2str(spikeArray(2*spikeCount-1))));
                 for j = spikeArray(2*spikeCount-1) - 20:spikeArray(2*spikeCount) + 20
                     IsPlaying = 1;
                     imgShow = vid(data1.boxx1:data1.boxx2, data1.boxy1:data1.boxy2, j);
@@ -483,7 +483,9 @@ setListBox();
                         'XTick', 1:30:size(data1.videomask, 2), 'YTick', 1:30:size(data1.videomask, 1), ...
                         'XTickLabel', data1.boxy1:30:data1.boxy2, 'YTickLabel', data1.boxx1:30:data1.boxx2);
                     colormap(gui.VideoAxes, gray);
+                    timeline = plot(gui.TraceAxes, [j, j], currentylim, '-', 'Color', 'red');
                     pause(0.008);
+                    delete(timeline);
 
                     if CallBackInterrupted
                         CallBackInterrupted = 0;
@@ -492,14 +494,14 @@ setListBox();
                     end
 
                     %To prevent freeze in video
-                    hold(gui.VideoAxes, 'off');
+                    hold(gui.VideoAxes,'off');
                 end
             end
         end
     end
-
-%% NoSpike - Check if user is looking for spikes, print to output file,
-%and play video for next spike
+    
+    %% NoSpike - Check if user is looking for spikes, print to output file,
+    %and play video for next spike
     function NoSpike(~, ~)
         if spikeCheck
             fprintf(fileout, strcat(int2str(0), "\n"));
@@ -508,8 +510,10 @@ setListBox();
             if spikeCount > spikeTotal
                 spikeCheck = false;
                 spikeCount = 1;
-            else
+            else 
                 fprintf(fileout, strcat(int2str(spikeArray(2*spikeCount-1)), " ", int2str(spikeArray(2*spikeCount)), " "));
+                currentylim = get(gui.TraceAxes, 'Ylim');
+                set(gui.VideoPanel, 'Title', strcat('Video - Spike at frame #', int2str(spikeArray(2*spikeCount-1))));
                 for j = spikeArray(2*spikeCount-1):spikeArray(2*spikeCount)
 
                     IsPlaying = 1;
@@ -528,8 +532,9 @@ setListBox();
                         'XTickLabel', data1.boxy1:30:data1.boxy2, 'YTickLabel', data1.boxx1:30:data1.boxx2);
                     colormap(gui.VideoAxes, gray);
 
-                    %                timeline = plot(gui.TraceAxes,[j j],currentylim,'-','Color','red');
+                    timeline = plot(gui.TraceAxes, [j, j], currentylim, '-', 'Color', 'red');
                     pause(0.008);
+                    delete(timeline);
                     delete(timeline);
 
                     if CallBackInterrupted
@@ -539,23 +544,24 @@ setListBox();
                     end
 
                     %To prevent freeze in video
-                    hold(gui.VideoAxes, 'off');
+                    hold(gui.VideoAxes,'off');
                 end
             end
         end
     end
-
-%% YesActive - print active neuron to output file
+    
+    %% YesActive - print active neuron to output file
     function YesActive(~, ~)
         fprintf(fileout, strcat(int2str(i), " 1\n"));
     end
 
-%% NoActive - print inactive neuron to output file
+    %% NoActive - print inactive neuron to output file
     function NoActive(~, ~)
         fprintf(fileout, strcat(int2str(i), " 0\n"));
     end
 
-%% Forward - move current neuron forward 1 and update interface
+
+    %% Forward - move current neuron forward 1 and update interface
     function Forward(~, ~)
         if ~(i == size(Mask, 3))
             i = i + 1;
@@ -566,7 +572,7 @@ setListBox();
         set(gui.ListBox, 'Value', i);
     end
 
-%% Backward - move current neuron backward 1 and update interface
+    %% Backward - move current neuron backward 1 and update interface
     function Backward(~, ~)
         if ~(i == 1)
             i = i - 1;
@@ -577,8 +583,8 @@ setListBox();
         set(gui.ListBox, 'Value', i);
     end
 
-%% setListBox - set box for list of neurons using mask array size
-    function setListBox()
+    %% setListBox - set box for list of neurons using mask array size
+    function setListBox() 
         arr = [];
         for c = 1:size(Mask, 3)
             arr = [arr, c];

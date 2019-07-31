@@ -9,6 +9,10 @@ timeline = [];
 global gui;
 global Trace;
 Trace = 0;
+global ARR; global countARR;
+ARR = []; countARR = [];
+global currentNeuronArr;
+currentNeuronArr = [];
 global spikeCheck spikeArray spikeCount spikeTotal onSpike yesNoArray meanAc std;
 spikeArray = [];
 spikeCheck = false;
@@ -124,20 +128,48 @@ setListBox();
             'Parent', gui.ListPanel, ...
             'FontSize', 10, ...
             'String', {1, 2, 3, 4, 5, 6, 7, 8, 9, 10});
+        gui.ListBoxSpikes = uicontrol( ...
+            'Style', 'ListBox', ...
+            'Parent', gui.ListPanel, ...
+            'FontSize', 10, ...
+            'String', {});
         gui.ListFB = uix.HBoxFlex( ...
             'Parent', gui.ListPanel, ...
             'Padding', 3);
         gui.ListForward = uicontrol( ...
             'Parent', gui.ListFB, ...
             'Style', 'PushButton', ...
-            'String', 'Forward', ...
+            'String', 'Forward Neuron', ...
             'CallBack', @Forward);
         gui.ListBackward = uicontrol( ...
             'Parent', gui.ListFB, ...
             'Style', 'PushButton', ...
-            'String', 'Backward', ...
+            'String', 'Backward Neuron', ...
             'CallBack', @Backward);
-        set(gui.ListPanel, 'Heights', [-5, -1]);
+        set(gui.ListPanel, 'Heights', [-2.5, -2.5, -1]);
+        
+        
+%         gui.ListPanelSpikes = uix.VBoxFlex( ...
+%             'Parent', upperLayout);
+%         gui.ListBoxSpikes = uicontrol( ...
+%             'Style', 'ListBox', ...
+%             'Parent', gui.ListPanel, ...
+%             'FontSize', 10, ...
+%             'String', {});
+%         gui.ListFBSpikes = uix.HBoxFlex( ...
+%             'Parent', gui.ListPanelSpikes, ...
+%             'Padding', 3);
+%         gui.ListForwardSpikes = uicontrol( ...
+%             'Parent', gui.ListFBSpikes, ...
+%             'Style', 'PushButton', ...
+%             'String', 'Forward', ...
+%             'CallBack', @Forward);
+%         gui.ListBackwardSpikes = uicontrol( ...
+%             'Parent', gui.ListFBSpikes, ...
+%             'Style', 'PushButton', ...
+%             'String', 'Backward', ...
+%             'CallBack', @Backward);
+%         set(gui.ListPanelSpikes, 'Heights', [-2.5, -1]);
 
         set(upperLayout, 'Widths', [-2, -2, -1]);
 
@@ -166,7 +198,11 @@ setListBox();
             'Parent', gui.ControlPanel, ...
             'String', 'No Active', ...
             'CallBack', @NoActive);
-
+        gui.SaveTraceButton = uicontrol( ...
+            'Style', 'PushButton', ...
+            'Parent', gui.ControlPanel, ...
+            'String', 'Save Changes', ...
+            'CallBack', @SaveTrace);
         set(lowerLayout, 'Widths', [-2.5, -1, -1]);
         gui.SetSpikeButton = uicontrol( ...
             'Style', 'PushButton', ...
@@ -183,11 +219,12 @@ setListBox();
             'Parent', gui.ControlPanel2, ...
             'String', 'No Spike', ...
             'CallBack', @NoSpike);
-        gui.SaveTraceButton = uicontrol( ...
+        gui.ReplaySpikeButton = uicontrol( ...
             'Style', 'PushButton', ...
             'Parent', gui.ControlPanel2, ...
-            'String', 'Save Changes', ...
-            'CallBack', @SaveTrace);
+            'String', 'Replay Spike Video', ...
+            'CallBack', @ReplaySpike);
+        
     end % createInterface
 
 %-------------------------------------------------------------------------%
@@ -285,11 +322,24 @@ setListBox();
         hold(gui.MaskAxes, 'on');
         IsPlaying = 0;
         set(gui.VideoPanel, 'Title', 'Video');
+        set(gui.ListBoxSpikes, 'Value', 1);
     end
     
     %% SaveTrace - saves labeling output file and closes GUI window
     function SaveTrace(~, ~)
         %         save('FinalTrace.mat', Trace);
+        count = 1;
+        tmp = size(countARR)/2;
+        disp(tmp(2));
+         for b=1:tmp(2)
+            fprintf(fileout, strcat('output{', int2str(countARR(2*b - 1)), '} = ['));
+            for c = count:(count + countARR(2*b) - 1)
+                fprintf(fileout, int2str(ARR(3*c-2)) + " " + int2str(ARR(3*c - 1)) + " " + int2str(ARR(3*c)) + ";");
+            end
+            count = count + countARR(2*b);
+            fprintf(fileout, '];\n');
+            
+        end
         fclose(fileout);
         close(gui.Window);
     end
@@ -348,6 +398,12 @@ setListBox();
         else
             disp(strcat('Total Spikes: ', int2str(spikeTotal)));
         end
+        tmp = [];
+        for g = 1:spikeTotal
+            tmp = [tmp g];
+        end
+        set(gui.ListBoxSpikes, 'String', tmp);
+        
     end
     
     %% PlayVideo - play full video for selected neuron
@@ -416,7 +472,7 @@ setListBox();
         spikeCheck = true;
         
         if (spikeTotal > 0)
-            fprintf(fileout, strcat(int2str(spikeArray(1)), " ", int2str(spikeArray(2)), " "));
+%             fprintf(fileout, strcat(int2str(spikeArray(1)), " ", int2str(spikeArray(2)), " "));
             foundPeak = false;
             currentylim = get(gui.TraceAxes, 'Ylim');
             set(gui.VideoPanel, 'Title', strcat('Video - Spike at frame #', int2str(max(spikeArray(1)-20, 1))));
@@ -457,16 +513,31 @@ setListBox();
     %and play video for next spike
     function YesSpike(~, ~)
         if spikeCheck
-            fprintf(fileout, strcat(int2str(1), "\n"));
+            %fprintf(fileout, strcat(int2str(1), "\n"));
+            currentSpikeArr = [spikeArray(2*spikeCount - 1) spikeArray(2*spikeCount) 1];
+            currentNeuronArr = [currentNeuronArr currentSpikeArr];
+            
             spikeCount = spikeCount + 1;
             if spikeCount > spikeTotal
                 spikeCheck = false;
                 spikeCount = 1;
+                
+                ARR = [ARR currentNeuronArr];
+        disp(ARR);
+        countARR = [countARR i];
+        tmp = size(currentNeuronArr);
+        countARR = [countARR tmp(2)/3];
+        disp(countARR);
+        currentNeuronArr = [];
+                
+                
+                
             else
                 %disp(int2str(spikeArray(2*spikeCount-1)));
-                fprintf(fileout, strcat(int2str(spikeArray(2*spikeCount-1)), " ", int2str(spikeArray(2*spikeCount)), " "));
+%                 fprintf(fileout, strcat(int2str(spikeArray(2*spikeCount-1)), " ", int2str(spikeArray(2*spikeCount)), " "));
                 currentylim = get(gui.TraceAxes, 'Ylim');
                 set(gui.VideoPanel, 'Title', strcat('Video - Spike at frame #', int2str(spikeArray(2*spikeCount-1))));
+                set(gui.ListBoxSpikes, 'Value', spikeCount);
                 for j = spikeArray(2*spikeCount-1) - 20:spikeArray(2*spikeCount) + 20
                     IsPlaying = 1;
                     imgShow = vid(data1.boxx1:data1.boxx2, data1.boxy1:data1.boxy2, j);
@@ -496,6 +567,7 @@ setListBox();
                     %To prevent freeze in video
                     hold(gui.VideoAxes,'off');
                 end
+                
             end
         end
     end
@@ -504,16 +576,29 @@ setListBox();
     %and play video for next spike
     function NoSpike(~, ~)
         if spikeCheck
-            fprintf(fileout, strcat(int2str(0), "\n"));
+            currentSpikeArr = [spikeArray(2*spikeCount - 1) spikeArray(2*spikeCount) 0];
+            currentNeuronArr = [currentNeuronArr currentSpikeArr];
             spikeCount = spikeCount + 1;
 
             if spikeCount > spikeTotal
                 spikeCheck = false;
                 spikeCount = 1;
+                
+                ARR = [ARR currentNeuronArr];
+        disp(ARR);
+        countARR = [countARR i];
+        tmp = size(currentNeuronArr);
+        countARR = [countARR tmp(2)/3];
+        disp(countARR);
+        currentNeuronArr = [];
+                
+                
+                
             else 
-                fprintf(fileout, strcat(int2str(spikeArray(2*spikeCount-1)), " ", int2str(spikeArray(2*spikeCount)), " "));
+%                 fprintf(fileout, strcat(int2str(spikeArray(2*spikeCount-1)), " ", int2str(spikeArray(2*spikeCount)), " "));
                 currentylim = get(gui.TraceAxes, 'Ylim');
                 set(gui.VideoPanel, 'Title', strcat('Video - Spike at frame #', int2str(spikeArray(2*spikeCount-1))));
+                set(gui.ListBoxSpikes, 'Value', spikeCount);
                 for j = spikeArray(2*spikeCount-1):spikeArray(2*spikeCount)
 
                     IsPlaying = 1;
@@ -546,27 +631,36 @@ setListBox();
                     %To prevent freeze in video
                     hold(gui.VideoAxes,'off');
                 end
+                
             end
         end
     end
     
     %% YesActive - print active neuron to output file
     function YesActive(~, ~)
-        fprintf(fileout, strcat(int2str(i), " 1\n"));
+%         fprintf(fileout, strcat(int2str(i), " 1\n"));
     end
 
     %% NoActive - print inactive neuron to output file
     function NoActive(~, ~)
-        fprintf(fileout, strcat(int2str(i), " 0\n"));
+%         fprintf(fileout, strcat(int2str(i), " 0\n"));
     end
 
 
     %% Forward - move current neuron forward 1 and update interface
     function Forward(~, ~)
+%         ARR = [ARR currentNeuronArr];
+%         disp(ARR);
+%         countARR = [countARR i];
+%         tmp = size(currentNeuronArr);
+%         countARR = [countARR tmp(2)/3];
+%         disp(countARR);
+%         currentNeuronArr = [];
         if ~(i == size(Mask, 3))
             i = i + 1;
         end
         %             disp(i);
+        
         updateInterface();
         ResetSpikeArray();
         set(gui.ListBox, 'Value', i);
@@ -574,6 +668,11 @@ setListBox();
 
     %% Backward - move current neuron backward 1 and update interface
     function Backward(~, ~)
+%         ARR = [ARR currentNeuronArr];
+%         currentNeuronArr = [];
+%         disp(ARR);
+%         countARR = [countARR i];
+%         disp(countARR);
         if ~(i == 1)
             i = i - 1;
         end
@@ -590,6 +689,40 @@ setListBox();
             arr = [arr, c];
         end
         set(gui.ListBox, 'String', arr);
+
+    end
+    function ReplaySpike(~,~) 
+        currentylim = get(gui.TraceAxes, 'Ylim');
+                set(gui.VideoPanel, 'Title', strcat('Video - Spike at frame #', int2str(spikeArray(2*spikeCount-1))));
+                for j = max(spikeArray(2*spikeCount-1) - 20, 1):spikeArray(2*spikeCount) + 20
+                    IsPlaying = 1;
+                    imgShow = vid(data1.boxx1:data1.boxx2, data1.boxy1:data1.boxy2, j);
+                    imagesc(gui.VideoAxes, imgShow);
+                    %set(gui.VideoAxes,'clim',[cmin,cmax]);
+                    hold(gui.VideoAxes, 'on');
+                    if (Trace(i, j) - meanAc) / std > 5
+                        gui.rectangle = rectangle(gui.VideoAxes, 'Position', [data1.center(1) - data1.boxy1 - 6, data1.center(2) - data1.boxx1 - 6, 13, 13], 'EdgeColor', 'red');
+                    else
+                        gui.rectangle = rectangle(gui.VideoAxes, 'Position', [data1.center(1) - data1.boxy1 - 6, data1.center(2) - data1.boxx1 - 6, 13, 13], 'EdgeColor', 'yellow');
+                    end
+                    set(gui.VideoAxes, 'DataAspectRatio', [1, 1, 1], ...
+                        'Xlim', [1, size(data1.videomask, 2)], 'Ylim', [1, size(data1.videomask, 1)], ...
+                        'XTick', 1:30:size(data1.videomask, 2), 'YTick', 1:30:size(data1.videomask, 1), ...
+                        'XTickLabel', data1.boxy1:30:data1.boxy2, 'YTickLabel', data1.boxx1:30:data1.boxx2);
+                    colormap(gui.VideoAxes, gray);
+                    timeline = plot(gui.TraceAxes, [j, j], currentylim, '-', 'Color', 'red');
+                    pause(0.008);
+                    delete(timeline);
+
+                    if CallBackInterrupted
+                        CallBackInterrupted = 0;
+                        IsPlaying = 0;
+                        return;
+                    end
+
+                    %To prevent freeze in video
+                    hold(gui.VideoAxes,'off');
+                end
 
     end
 end

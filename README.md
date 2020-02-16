@@ -8,6 +8,7 @@ This code allows for accurate manual labeling of neuron activity from calcium im
   * MATLAB Runtime can be acquired from [here][runtime-link]
   
 [gui-toolbox]: https://www.mathworks.com/matlabcentral/fileexchange/47982-gui-layout-toolbox
+[runtime-link]: https://www.mathworks.com/products/compiler/matlab-runtime.html
 
 ### Preparing Data
 Imaging data should include a video as a nifti file (.nii or .nii.gz) with masks as a .mat file. Once the code is downloaded and setup in MATLAB, load the video and masks as arrays using load('MASKS FILE NAME HERE') and vid=niftiread('VIDEO FILE NAME HERE').
